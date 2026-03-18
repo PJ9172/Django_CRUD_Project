@@ -1,37 +1,42 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from rest_framework import viewsets
+from .serializers import TaskSerializer
 from .models import Task
+from .forms import TaskForm
+
+class TaskViewSet(viewsets.ModelViewSet):
+    queryset = Task.objects.all()
+    serializer_class = TaskSerializer
+    
 
 def task_list(request):
     tasks = Task.objects.all()
     return render(request, 'tasks/task_list.html', {'tasks': tasks})
 
 def create_task(request):
-    if request.method == 'POST':
-        title = request.POST.get('title')
-        description = request.POST.get('description')
+    form = TaskForm(request.POST or None)
 
-        Task.objects.create(
-            title=title,
-            description=description
-        )
+    if form.is_valid():
+        form.save()
         return redirect('task_list')
 
-    return render(request, 'tasks/create_task.html')
+    return render(request, 'tasks/create_task.html', {'form': form})
 
 def update_task(request, id):
     task = get_object_or_404(Task, id=id)
+    form = TaskForm(request.POST or None, instance=task)
 
-    if request.method == 'POST':
-        task.title = request.POST.get('title')
-        task.description = request.POST.get('description')
-        task.is_completed = request.POST.get('is_completed') == 'on'
-        task.save()
-
+    if form.is_valid():
+        form.save()
         return redirect('task_list')
 
-    return render(request, 'tasks/update_task.html', {'task': task})
+    return render(request, 'tasks/update_task.html', {'form': form})
 
 def delete_task(request, id):
     task = get_object_or_404(Task, id=id)
-    task.delete()
-    return redirect('task_list')
+
+    if request.method == "POST":
+        task.delete()
+        return redirect('task_list')
+
+    return render(request, 'tasks/delete_task.html', {'task': task})
